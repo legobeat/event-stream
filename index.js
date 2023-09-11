@@ -10,7 +10,6 @@ var Stream = require('stream').Stream
   , from = require('from')
   , duplex = require('duplexer')
   , map = require('map-stream')
-  , pause = require('pause-stream')
   , split = require('split')
   , pipeline = require('stream-combiner')
   , immediately = global.setImmediate || process.nextTick;
@@ -20,7 +19,7 @@ es.through = through
 es.from = from
 es.duplex = duplex
 es.map = map
-es.pause = pause
+es.pause = through
 es.split = split
 es.pipeline = es.connect = es.pipe = pipeline
 // merge / concat
@@ -56,7 +55,7 @@ es.merge = function (/*streams...*/) {
       stream.emit('end')
     })
   }
-  
+
   stream.write = function (data) {
     this.emit('data', data)
   }

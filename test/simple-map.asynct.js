@@ -1,12 +1,13 @@
 'use strict';
 
-var es = require('../')
+
+const es = require('../')
   , it = require('it-is')
   , u = require('ubelt')
   , spec = require('stream-spec')
   , Stream = require('stream')
   , from = require('from')
-  , through = require('through')
+  , { Transform } = require('readable-stream')
 
 //REFACTOR THIS TEST TO USE es.readArray and es.writeArray
 
@@ -21,7 +22,7 @@ function writeArray(array, stream) {
 
 function readStream(stream, done) {
 
-  var array = [] 
+  var array = []
   stream.on('data', function (data) {
     array.push(data)
   })
@@ -30,48 +31,50 @@ function readStream(stream, done) {
     done(null, array)
   })
 
-} 
+}
 
 //call sink on each write,
 //and complete when finished.
 
-function pauseStream (prob, delay) { 
+function pauseStream (prob, delay) {
   var pauseIf = (
-      'number' == typeof prob 
+      'number' == typeof prob
     ? function () {
         return Math.random() < prob
-      } 
-    : 'function' == typeof prob 
+      }
+    : 'function' == typeof prob
     ? prob
     : 0.1
   )
-  var delayer = ( 
-      !delay 
+  var delayer = (
+      !delay
     ? process.nextTick
-    : 'number' == typeof delay 
+    : 'number' == typeof delay
     ? function (next) { setTimeout(next, delay) }
     : delay
-  )   
+  )
 
-  return es.through(function (data) {    
-    if(!this.paused && pauseIf()) {
-      console.log('PAUSE STREAM PAUSING')
-      this.pause()
-      var self = this
-      delayer(function () {
-        console.log('PAUSE STREAM RESUMING')
-        self.resume()
-      })
-    }
-    console.log("emit ('data', " + data + ')')
-    this.emit('data', data) 
+  return new Transform({
+    transform: function (data) {
+      if(!this.paused && pauseIf()) {
+        console.log('PAUSE STREAM PAUSING')
+        this.pause()
+        var self = this
+        delayer(function () {
+          console.log('PAUSE STREAM RESUMING')
+          self.resume()
+        })
+      }
+      console.log("emit ('data', " + data + ')')
+      this.emit('data', data)
+    },
   })
 }
 
 exports ['simple map'] = function (test) {
 
   var input = u.map(1, 1000, function () {
-    return Math.random() 
+    return Math.random()
   })
   var expected = input.map(function (v) {
     return v * 2
@@ -83,12 +86,14 @@ exports ['simple map'] = function (test) {
     it(ar).deepEqual(expected)
     test.done()
   })
-  var map = es.through(function (data) {
-    this.emit('data', data * 2)
-  }) 
+  const map = new Transform({
+    transform: function (data) {
+      this.emit('data', data * 2)
+    },
+  })
 
-  spec(map).through().validateOnExit()
-  spec(pause).through().validateOnExit()
+  spec(map).validateOnExit()
+  spec(pause).validateOnExit()
 
   fs.pipe(map).pipe(pause).pipe(ts)
 }
@@ -102,13 +107,13 @@ exports ['simple map applied to a stream'] = function (test) {
     cb(null, data * 2)
   })
 
-  spec(doubler).through().validateOnExit()
+  spec(doubler).validateOnExit()
 
   //a map is only a middle man, so it is both readable and writable
-  
+
   it(doubler).has({
     readable: true,
-    writable: true,   
+    writable: true,
   })
 
   readStream(doubler, function (err, output) {
@@ -118,9 +123,9 @@ exports ['simple map applied to a stream'] = function (test) {
 //    process.nextTick(x.validate)
     test.done()
   })
-  
+
   writeArray(input, doubler)
-  
+
 }
 
 exports['pipe two maps together'] = function (test) {
@@ -133,9 +138,9 @@ exports['pipe two maps together'] = function (test) {
   var doubler1 = es.map(dd), doubler2 = es.map(dd)
 
   doubler1.pipe(doubler2)
-  
-  spec(doubler1).through().validateOnExit()
-  spec(doubler2).through().validateOnExit()
+
+  spec(doubler1).validateOnExit()
+  spec(doubler2).validateOnExit()
 
   readStream(doubler2, function (err, output) {
     it(output).deepEqual(input.map(function (j) {
@@ -143,7 +148,7 @@ exports['pipe two maps together'] = function (test) {
     }))
     test.done()
   })
-  
+
   writeArray(input, doubler1)
 
 }
@@ -157,7 +162,7 @@ exports['pipe two maps together'] = function (test) {
 //
 // plumber (evStr1, evStr2, evStr3, evStr4, evStr5)
 //
-// will return a single stream that write goes to the first 
+// will return a single stream that write goes to the first
 
 exports ['map will not call end until the callback'] = function (test) {
 
@@ -167,10 +172,10 @@ exports ['map will not call end until the callback'] = function (test) {
     })
   })
 
-  spec(ticker).through().validateOnExit()
+  spec(ticker).validateOnExit()
 
   ticker.write('x')
-  ticker.end() 
+  ticker.end()
 
   ticker.on('end', function () {
     test.done()
@@ -181,13 +186,13 @@ exports ['map will not call end until the callback'] = function (test) {
 exports ['emit error thrown'] = function (test) {
 
   var err = new Error('INTENSIONAL ERROR')
-    , mapper = 
+    , mapper =
   es.map(function () {
     throw err
   })
 
   mapper.on('error', function (_err) {
-    it(_err).equal(err)  
+    it(_err).equal(err)
     test.done()
   })
 
@@ -201,13 +206,13 @@ exports ['emit error thrown'] = function (test) {
 exports ['emit error calledback'] = function (test) {
 
   var err = new Error('INTENSIONAL ERROR')
-    , mapper = 
+    , mapper =
   es.map(function (data, callback) {
     callback(err)
   })
 
   mapper.on('error', function (_err) {
-    it(_err).equal(err)  
+    it(_err).equal(err)
     test.done()
   })
 
@@ -221,8 +226,8 @@ exports ['do not emit drain if not paused'] = function (test) {
     u.delay(callback)(null, 1)
     return true
   })
-  
-  spec(map).through().pausable().validateOnExit()
+
+  spec(map).pausable().validateOnExit()
 
   map.on('drain', function () {
     it(false).ok('should not emit drain unless the stream is paused')
@@ -248,7 +253,7 @@ exports ['emits drain if paused, when all '] = function (test) {
     return false
   })
 
-  spec(map).through().validateOnExit()
+  spec(map).validateOnExit()
 
   map.on('drain', function () {
     drained = true
@@ -264,7 +269,7 @@ exports ['emits drain if paused, when all '] = function (test) {
   map.on('end', function () {
     console.log('end')
     it(drained).ok('shoud have emitted drain before end')
-    test.done() 
+    test.done()
   })
 
 }
@@ -279,7 +284,7 @@ exports ['map applied to a stream with filtering'] = function (test) {
     else
       callback()
   })
-  
+
   readStream(doubler, function (err, output) {
     it(output).deepEqual(input.filter(function (j) {
       return j % 2
@@ -288,11 +293,11 @@ exports ['map applied to a stream with filtering'] = function (test) {
     }))
     test.done()
   })
-  
-  spec(doubler).through().validateOnExit()
+
+  spec(doubler).validateOnExit()
 
   writeArray(input, doubler)
-  
+
 }
 
 exports ['simple mapSync applied to a stream'] = function (test) {
@@ -302,18 +307,18 @@ exports ['simple mapSync applied to a stream'] = function (test) {
   var doubler = es.mapSync(function (data) {
     return data * 2
   })
-  
+
   readStream(doubler, function (err, output) {
     it(output).deepEqual(input.map(function (j) {
       return j * 2
     }))
     test.done()
   })
-  
-  spec(doubler).through().validateOnExit()
+
+  spec(doubler).validateOnExit()
 
   writeArray(input, doubler)
-  
+
 }
 
 exports ['mapSync applied to a stream with filtering'] = function (test) {
@@ -324,7 +329,7 @@ exports ['mapSync applied to a stream with filtering'] = function (test) {
     if (data % 2)
       return data * 2
   })
-  
+
   readStream(doubler, function (err, output) {
     it(output).deepEqual(input.filter(function (j) {
       return j % 2
@@ -333,11 +338,11 @@ exports ['mapSync applied to a stream with filtering'] = function (test) {
     }))
     test.done()
   })
-  
-  spec(doubler).through().validateOnExit()
+
+  spec(doubler).validateOnExit()
 
   writeArray(input, doubler)
-  
+
 }
 
 require('./helper')(module)

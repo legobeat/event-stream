@@ -14,8 +14,8 @@ exports ['es.split() works like String#split'] = function (test) {
     , ended = false
     , x = spec(cs).through()
 
-  var a = new Stream ()
-  
+  var a = new Stream ({objectMode: true})
+
   a.write = function (l) {
     actual.push(l.trim())
   }
@@ -38,10 +38,10 @@ exports ['es.split() works like String#split'] = function (test) {
       })
   }
   a.writable = true
-  
+
   fs.createReadStream(readme, {flags: 'r'}).pipe(cs)
-  cs.pipe(a) 
-  
+  cs.pipe(a)
+
 }
 
 require('./helper')(module)

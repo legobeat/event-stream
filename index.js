@@ -4,19 +4,20 @@
 // maybe we want to group the reductions or emit progress updates occasionally
 // the most basic reduce just emits one 'data' event after it has recieved 'end'
 
-var Stream = require('stream').Stream
+const readableStream = require('readable-stream');
+
+const { Readable, Stream, Transform } = readableStream.Stream
   , es = exports
-  , through = require('through')
-  , from = require('from')
   , duplex = require('duplexer')
+  , through = (x) => new Transform({ transform: x })
   , map = require('map-stream')
-  , split = require('split')
+  , split = require('split2')
   , pipeline = require('stream-combiner')
   , immediately = global.setImmediate || process.nextTick;
 
-es.Stream = Stream //re-export Stream from core
+es.Stream = Stream //re-export Stream from readable-stream
 es.through = through
-es.from = from
+es.from = Readable.from
 es.duplex = duplex
 es.map = map
 es.pause = through
@@ -33,7 +34,7 @@ es.merge = function (/*streams...*/) {
   if (toMerge.length === 1 && (toMerge[0] instanceof Array)) {
     toMerge = toMerge[0] //handle array as arguments object
   }
-  var stream = new Stream()
+  var stream = new Stream({ objectMode: true })
   stream.setMaxListeners(0) // allow adding more than 11 streams
   var endCount = 0
   stream.writable = stream.readable = true
@@ -77,7 +78,7 @@ es.writeArray = function (done) {
   if ('function' !== typeof done)
     throw new Error('function writeArray (done): done must be function')
 
-  var a = new Stream ()
+  var a = new Stream ({ objectMode: true })
     , array = [], isDone = false
   a.write = function (l) {
     array.push(l)
@@ -100,7 +101,7 @@ es.writeArray = function (done) {
 //respecting pause() and resume()
 
 es.readArray = function (array) {
-  var stream = new Stream()
+  var stream = new Stream({ objectMode: true })
     , i = 0
     , paused = false
     , ended = false
@@ -111,10 +112,10 @@ es.readArray = function (array) {
   if(!Array.isArray(array))
     throw new Error('event-stream.read expects an array')
 
-  stream.resume = function () {
+  stream.resume = () => {
     if(ended) return
     paused = false
-    var l = array.length
+    const l = array.length
     while(i < l && !paused && !ended) {
       stream.emit('data', array[i++])
     }
@@ -141,7 +142,7 @@ es.readArray = function (array) {
 
 es.readable =
 function (func, continueOnError) {
-  var stream = new Stream()
+  var stream = new Stream({ objectMode: true })
     , i = 0
     , paused = false
     , ended = false

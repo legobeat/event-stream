@@ -9,11 +9,10 @@
   },
   "dependencies": {
     "duplexer": "^0.1.1",
-    "from": "^0.1.7",
     "map-stream": "0.0.7",
-    "split": "^1.0.1",
+    "split2": "^3.2.2",
     "stream-combiner": "^0.2.2",
-    "through": "^2.3.8"
+    "through2": "^4.0.2"
   },
   "devDependencies": {
     "asynct": "^1.1.0",

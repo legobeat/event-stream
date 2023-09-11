@@ -6,8 +6,8 @@ const es = require('../')
   , u = require('ubelt')
   , spec = require('stream-spec')
   , Stream = require('stream')
-  , from = require('from')
-  , { Transform } = require('readable-stream')
+  , { Readable, Transform } = require('readable-stream')
+  , from = Readable.from
 
 //REFACTOR THIS TEST TO USE es.readArray and es.writeArray
 

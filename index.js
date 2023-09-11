@@ -6,9 +6,9 @@
 
 const readableStream = require('readable-stream');
 
-const { Readable, Stream, Transform } = readableStream.Stream
+const { Duplex, Readable, Stream, Transform } = readableStream.Stream
   , es = exports
-  , duplex = require('duplexer')
+  , duplex = Duplex
   , through = (x) => new Transform({ transform: x })
   , map = require('map-stream')
   , split = require('split2')

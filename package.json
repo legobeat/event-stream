@@ -39,5 +39,8 @@
     "replace"
   ],
   "license": "MIT",
+  "engines": {
+    "node": "^12 || ^14 || ^16 || >= 18"
+  },
   "author": "Dominic Tarr <dominic.tarr@gmail.com> (http://bit.ly/dominictarr)"
 }

@@ -29,7 +29,14 @@
     "test_tap": "set -e; for t in test/*.js; do node $t; done"
   },
   "keywords": [
-    "stream", "map", "flatmap", "filter", "split", "join", "merge", "replace"
+    "stream",
+    "map",
+    "flatmap",
+    "filter",
+    "split",
+    "join",
+    "merge",
+    "replace"
   ],
   "license": "MIT",
   "author": "Dominic Tarr <dominic.tarr@gmail.com> (http://bit.ly/dominictarr)"
